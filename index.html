@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Facility SCR Reports Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        
+        .header p {
+            margin: 15px 0 0 0;
+            opacity: 0.9;
+            font-size: 18px;
+        }
+        
+        .controls-section {
+            background: #f8f9fa;
+            padding: 25px 40px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        select, button {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+        
+        .chart-container {
+            padding: 40px;
+        }
+        
+        .chart-wrapper {
+            position: relative;
+            height: 500px;
+            margin-bottom: 40px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            padding: 20px;
+        }
+        
+        .facility-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin: 30px 0;
+        }
+        
+        .facility-card {
+            background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid;
+            transition: transform 0.3s ease;
+        }
+        
+        .facility-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+        }
+        
+        .facility-card.lincoln { border-left-color: #e74c3c; }
+        .facility-card.jacobi { border-left-color: #3498db; }
+        .facility-card.woodhull { border-left-color: #2ecc71; }
+        .facility-card.south-brooklyn { border-left-color: #f39c12; }
+        .facility-card.metropolitan { border-left-color: #9b59b6; }
+        
+        .facility-name {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+        
+        .facility-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .stat-item {
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            display: block;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .trend-indicator {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .trend-up { background: #d4edda; color: #155724; }
+        .trend-down { background: #f8d7da; color: #721c24; }
+        .trend-stable { background: #d1ecf1; color: #0c5460; }
+        
+        .summary-section {
+            background: #f8f9fa;
+            padding: 30px 40px;
+            border-top: 1px solid #e9ecef;
+        }
+        
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .summary-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .summary-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        
+        .summary-label {
+            font-size: 14px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        
+        .legend-custom {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 4px;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Multi-Facility SCR Reports Analysis</h1>
+            <p>Comparative Analysis of Child Abuse Reporting Across 5 Healthcare Facilities (2020-2024)</p>
+        </div>
+        
+        <div class="controls-section">
+            <div class="controls">
+                <div class="control-group">
+                    <label>Chart Type:</label>
+                    <select id="chartType" onchange="updateChart()">
+                        <option value="line">Trend Lines</option>
+                        <option value="bar">Grouped Bars</option>
+                        <option value="area">Area Chart</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Show:</label>
+                    <select id="dataView" onchange="updateChart()">
+                        <option value="all">All Facilities</option>
+                        <option value="top3">Top 3 Performers</option>
+                        <option value="growing">Growing Facilities</option>
+                        <option value="comparison">vs South Brooklyn</option>
+                    </select>
+                </div>
+                <button onclick="exportChart()">Export Chart</button>
+                <button onclick="showAnalysis()">Detailed Analysis</button>
+            </div>
+        </div>
+        
+        <div class="chart-container">
+            <div class="legend-custom">
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #e74c3c;"></div>
+                    <span>Lincoln Medical Center</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #3498db;"></div>
+                    <span>Jacobi Medical Center</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #2ecc71;"></div>
+                    <span>Woodhull Medical Center</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #f39c12;"></div>
+                    <span>South Brooklyn Health</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color" style="background: #9b59b6;"></div>
+                    <span>Metropolitan Hospital</span>
+                </div>
+            </div>
+            
+            <div class="chart-wrapper">
+                <canvas id="facilityChart"></canvas>
+            </div>
+            
+            <div class="facility-grid">
+                <div class="facility-card lincoln">
+                    <div class="facility-name">Lincoln Medical Center</div>
+                    <div class="facility-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">1,401</span>
+                            <span class="stat-label">Total Reports</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">280</span>
+                            <span class="stat-label">Avg/Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">337</span>
+                            <span class="stat-label">Peak (2021)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">-43%</span>
+                            <span class="stat-label">5-Year Change</span>
+                            <span class="trend-indicator trend-down">Declining</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="facility-card jacobi">
+                    <div class="facility-name">Jacobi Medical Center</div>
+                    <div class="facility-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">1,231</span>
+                            <span class="stat-label">Total Reports</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">246</span>
+                            <span class="stat-label">Avg/Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">293</span>
+                            <span class="stat-label">Peak (2023)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">+27%</span>
+                            <span class="stat-label">5-Year Change</span>
+                            <span class="trend-indicator trend-up">Growing</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="facility-card woodhull">
+                    <div class="facility-name">Woodhull Medical Center</div>
+                    <div class="facility-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">810</span>
+                            <span class="stat-label">Total Reports</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">162</span>
+                            <span class="stat-label">Avg/Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">196</span>
+                            <span class="stat-label">Peak (2020)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">-32%</span>
+                            <span class="stat-label">5-Year Change</span>
+                            <span class="trend-indicator trend-down">Declining</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="facility-card south-brooklyn">
+                    <div class="facility-name">South Brooklyn Health</div>
+                    <div class="facility-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">558</span>
+                            <span class="stat-label">Total Reports</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">112</span>
+                            <span class="stat-label">Avg/Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">153</span>
+                            <span class="stat-label">Peak (2023)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">+9%</span>
+                            <span class="stat-label">5-Year Change</span>
+                            <span class="trend-indicator trend-stable">Stable</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="facility-card metropolitan">
+                    <div class="facility-name">Metropolitan Hospital</div>
+                    <div class="facility-stats">
+                        <div class="stat-item">
+                            <span class="stat-value">120</span>
+                            <span class="stat-label">Total Reports</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">24</span>
+                            <span class="stat-label">Avg/Year</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">28</span>
+                            <span class="stat-label">Peak (2024)</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value">+56%</span>
+                            <span class="stat-label">5-Year Change</span>
+                            <span class="trend-indicator trend-up">Growing</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="summary-section">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <div class="summary-value">4,120</div>
+                    <div class="summary-label">Total SCR Reports (All Facilities)</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">Lincoln</div>
+                    <div class="summary-label">Highest Volume Facility</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">2023</div>
+                    <div class="summary-label">Peak Reporting Year</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-value">Mixed</div>
+                    <div class="summary-label">Overall Trend Pattern</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const facilityData = {
+            labels: ['2020', '2021', '2022', '2023', '2024'],
+            datasets: [
+                {
+                    label: 'Lincoln Medical Center',
+                    data: [332, 337, 301, 241, 190],
+                    borderColor: '#e74c3c',
+                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#e74c3c',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                },
+                {
+                    label: 'Jacobi Medical Center',
+                    data: [196, 255, 238, 293, 249],
+                    borderColor: '#3498db',
+                    backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#3498db',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                },
+                {
+                    label: 'Woodhull Medical Center',
+                    data: [196, 195, 151, 135, 133],
+                    borderColor: '#2ecc71',
+                    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#2ecc71',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                },
+                {
+                    label: 'South Brooklyn Health',
+                    data: [110, 71, 104, 153, 120],
+                    borderColor: '#f39c12',
+                    backgroundColor: 'rgba(243, 156, 18, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#f39c12',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                },
+                {
+                    label: 'Metropolitan Hospital',
+                    data: [18, 27, 25, 22, 28],
+                    borderColor: '#9b59b6',
+                    backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                    borderWidth: 3,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: '#9b59b6',
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 6
+                }
+            ]
+        };
+
+        let chart;
+
+        function initChart() {
+            const ctx = document.getElementById('facilityChart').getContext('2d');
+            
+            chart = new Chart(ctx, {
+                type: 'line',
+                data: facilityData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(44, 62, 80, 0.95)',
+                            titleColor: '#ffffff',
+                            bodyColor: '#ffffff',
+                            borderColor: '#3498db',
+                            borderWidth: 1,
+                            cornerRadius: 8,
+                            displayColors: true,
+                            callbacks: {
+                                title: function(context) {
+                                    return `Year ${context[0].label}`;
+                                },
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.parsed.y} reports`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Year',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0,0,0,0.1)',
+                                lineWidth: 1
+                            },
+                            title: {
+                                display: true,
+                                text: 'Number of SCR Reports',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    }
+                }
+            });
+        }
+
+        function updateChart() {
+            const chartType = document.getElementById('chartType').value;
+            const dataView = document.getElementById('dataView').value;
+            
+            let datasets = [...facilityData.datasets];
+            
+            if (dataView === 'top3') {
+                datasets = [facilityData.datasets[0], facilityData.datasets[1], facilityData.datasets[2]]; // Lincoln, Jacobi, Woodhull
+            } else if (dataView === 'growing') {
+                datasets = [facilityData.datasets[1], facilityData.datasets[4]]; // Jacobi and Metropolitan (growing trends)
+            } else if (dataView === 'comparison') {
+                datasets = facilityData.datasets; // All for comparison
+            }
+            
+            // Handle area chart
+            if (chartType === 'area') {
+                datasets.forEach(dataset => {
+                    dataset.fill = true;
+                    dataset.backgroundColor = dataset.backgroundColor.replace('0.1', '0.3');
+                });
+            } else {
+                datasets.forEach(dataset => {
+                    dataset.fill = false;
+                    dataset.backgroundColor = dataset.backgroundColor.replace('0.3', '0.1');
+                });
+            }
+            
+            chart.config.type = chartType;
+            chart.data.datasets = datasets;
+            chart.update();
+        }
+
+        function exportChart() {
+            const url = chart.toBase64Image();
+            const link = document.createElement('a');
+            link.download = 'Multi_Facility_SCR_Reports.png';
+            link.href = url;
+            link.click();
+        }
+
+        function showAnalysis() {
+            const analysis = `
+DETAILED FACILITY ANALYSIS (2020-2024):
+
+📊 VOLUME LEADERS:
+• Lincoln Medical Center: 1,401 total reports (34% of all reports)
+• Jacobi Medical Center: 1,231 total reports (30% of all reports)
+• Woodhull Medical Center: 810 total reports (20% of all reports)
+• South Brooklyn Health: 558 total reports (14% of all reports)
+• Metropolitan Hospital: 120 total reports (3% of all reports)
+
+📈 TREND ANALYSIS:
+• Lincoln: Declining trend (-43% from 2020 to 2024)
+• Jacobi: Growth trend (+27% from 2020 to 2024)
+• Woodhull: Steady decline (-32% from 2020 to 2024)
+• South Brooklyn: Stable with recovery (+9% overall)
+• Metropolitan: Strong growth (+56% from 2020 to 2024)
+
+🎯 KEY INSIGHTS:
+• 2023 was peak year for Jacobi and South Brooklyn
+• 2024 was peak year for Metropolitan (28 reports)
+• Lincoln maintained highest absolute numbers despite decline
+• Metropolitan shows strongest percentage growth despite low volume
+• Total system reports: 4,120 across all facilities
+
+📋 RECOMMENDATIONS:
+• Investigate factors behind Lincoln's decline
+• Study Jacobi's and Metropolitan's growth strategies
+• Address Woodhull's declining trend
+• Monitor South Brooklyn's recovery sustainability
+• Consider if Metropolitan's growth indicates capacity for expansion
+            `;
+            alert(analysis);
+        }
+
+        // Initialize chart when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+        });
+    </script>
+</body>
+</html>
